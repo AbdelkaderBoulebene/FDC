@@ -1,0 +1,9 @@
+# Dossier d'analyse (outils de dev, pas de l'application)
+excel/
+
+# Dépendances Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

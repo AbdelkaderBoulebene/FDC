@@ -1,0 +1,1219 @@
+/* ================================================================
+   FDC — Répartition Femmes de Chambre
+   style.css — Dark mode, layout, composants, impression
+   ================================================================ */
+
+/* ── Variables ──────────────────────────────────────────────── */
+:root {
+  --bg-base:        #0d1117;
+  --bg-surface:     #161b22;
+  --bg-elevated:    #1c2128;
+  --bg-hover:       #21262d;
+  --bg-active:      #262c36;
+
+  --border:         #30363d;
+  --border-muted:   #21262d;
+
+  --text-primary:   #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted:     #6e7681;
+
+  --accent-blue:    #58a6ff;
+  --accent-green:   #3fb950;
+  --accent-orange:  #d29922;
+  --accent-red:     #f85149;
+  --accent-purple:  #bc8cff;
+  --accent-pink:    #ff7b72;
+  --accent-teal:    #39d353;
+
+  --badge-depart-bg:    rgba(248, 81, 73, 0.18);
+  --badge-depart-text:  #ff7b72;
+  --badge-depart-border: rgba(248, 81, 73, 0.4);
+
+  --badge-recouche-bg:    rgba(210, 153, 34, 0.18);
+  --badge-recouche-text:  #e3b341;
+  --badge-recouche-border: rgba(210, 153, 34, 0.4);
+
+  --badge-propre-bg:    rgba(63, 185, 80, 0.18);
+  --badge-propre-text:  #3fb950;
+  --badge-propre-border: rgba(63, 185, 80, 0.4);
+
+  --badge-blocked-bg:   rgba(139, 148, 158, 0.18);
+  --badge-blocked-text: #8b949e;
+  --badge-blocked-border: rgba(139, 148, 158, 0.4);
+
+  --badge-twin-bg:    rgba(88, 166, 255, 0.18);
+  --badge-twin-text:  #58a6ff;
+  --badge-twin-border: rgba(88, 166, 255, 0.4);
+
+  --badge-gl-bg:    rgba(188, 140, 255, 0.18);
+  --badge-gl-text:  #bc8cff;
+  --badge-gl-border: rgba(188, 140, 255, 0.4);
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --header-height: 52px;
+  --options-height: 44px;
+}
+
+/* ── Reset / Base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+#app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--header-height);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  gap: 0.75rem;
+  box-shadow: var(--shadow-md);
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.brand-text h1 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.brand-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+}
+
+.btn-separator {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  margin: 0 0.25rem;
+}
+
+/* ── Boutons ─────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  line-height: 1;
+  user-select: none;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-icon { font-size: 0.9rem; }
+
+.btn-primary {
+  background: var(--accent-blue);
+  color: #0d1117;
+  border-color: var(--accent-blue);
+}
+.btn-primary:hover:not(:disabled) {
+  background: #79b8ff;
+  border-color: #79b8ff;
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent-blue);
+}
+
+.btn-danger {
+  background: rgba(248, 81, 73, 0.12);
+  color: var(--accent-red);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.22);
+  border-color: var(--accent-red);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+.btn-outline:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--accent-blue);
+}
+
+.btn-sm {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: transparent;
+  padding: 0.45rem 0.6rem;
+  font-size: 1rem;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.btn-ghost.active {
+  color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.1);
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+/* ── Groupe d'étapes workflow ────────────────────────────────── */
+.workflow-steps {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 0;
+}
+
+/* Bouton étape (commun aux 3 steps) */
+.btn-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-step:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+.btn-step:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Badge circulaire (numéro → ✓ quand complété) */
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(88, 166, 255, 0.12);
+  color: #58a6ff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  transition: background 0.25s, color 0.25s;
+}
+.step-badge::before { content: attr(data-step); }
+
+/* Étape complétée : badge vert + texte plus visible */
+.btn-step.done { color: var(--text-primary); }
+.btn-step.done .step-badge {
+  background: rgba(63, 185, 80, 0.22);
+  color: #3fb950;
+}
+.btn-step.done .step-badge::before { content: '✓'; }
+
+/* Étape 3 (action principale) — s'allume quand disponible */
+.btn-step--primary:not(:disabled) {
+  background: var(--accent-blue);
+  color: #0d1117;
+  font-weight: 700;
+}
+.btn-step--primary:not(:disabled) .step-badge {
+  background: rgba(13, 17, 23, 0.2);
+  color: #0d1117;
+}
+.btn-step--primary:not(:disabled):hover { background: #79b8ff; }
+
+/* Séparateur chevron entre les étapes */
+.workflow-chevron {
+  color: var(--border);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 1px;
+  pointer-events: none;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* ── Options Bar ─────────────────────────────────────────────── */
+#options-bar {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 90;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.5rem;
+  height: var(--options-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  overflow: hidden;
+  transition: height 0.2s ease, opacity 0.2s ease, padding 0.2s ease;
+}
+
+#options-bar.options-hidden {
+  height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom-color: transparent;
+  pointer-events: none;
+}
+
+.options-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.options-info {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Toggle switch */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--bg-active);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.toggle-label input:checked + .toggle-slider {
+  background: rgba(88, 166, 255, 0.25);
+  border-color: var(--accent-blue);
+}
+
+.toggle-label input:checked + .toggle-slider::after {
+  left: 18px;
+  background: var(--accent-blue);
+}
+
+.toggle-text {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.toggle-label:hover .toggle-text {
+  color: var(--text-primary);
+}
+
+.toggle-label input:checked ~ .toggle-text {
+  color: var(--text-primary);
+}
+
+/* ── Main Layout ─────────────────────────────────────────────── */
+#app-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ── Zone Header (commun) ───────────────────────────────────── */
+.zone-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.zone-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.zone-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.zone-title h2 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.count-badge {
+  background: var(--bg-active);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.count-badge.count-warning {
+  background: rgba(210, 153, 34, 0.12);
+  color: var(--accent-orange);
+  border-color: rgba(210, 153, 34, 0.3);
+}
+
+.count-badge.count-gray {
+  background: var(--bg-active);
+  color: var(--text-muted);
+}
+
+.btn-collapse {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.2s;
+}
+.btn-collapse:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+.btn-collapse.collapsed { transform: rotate(-90deg); }
+
+/* ── Zone A + C : Wrapper côte à côte ──────────────────────── */
+#zone-top {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+}
+
+/* ── Zone A : Tableau des chambres ──────────────────────────── */
+#zone-rooms {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+}
+
+.table-wrapper {
+  overflow: auto;
+  max-height: 220px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-muted);
+  transition: max-height 0.3s ease;
+}
+
+.table-wrapper.collapsed {
+  max-height: 0;
+  overflow: hidden;
+  border-color: transparent;
+}
+
+#rooms-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+#rooms-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+#rooms-table thead tr {
+  background: var(--bg-active);
+}
+
+#rooms-table th {
+  padding: 0.3rem 0.4rem;
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#rooms-table td {
+  padding: 0.22rem 0.4rem;
+  border-bottom: 1px solid var(--border-muted);
+  color: var(--text-primary);
+  white-space: nowrap;
+  font-size: 0.78rem;
+  overflow: hidden;
+}
+
+
+#rooms-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+#rooms-table tbody tr:hover td {
+  background: var(--bg-hover);
+}
+
+#rooms-table .cell-center {
+  text-align: center;
+}
+
+#rooms-table .cell-room {
+  font-weight: 700;
+  color: var(--accent-blue);
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+#rooms-table .cell-note {
+  color: var(--text-muted);
+  font-style: italic;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-blocked td { opacity: 0.5; }
+.row-propre td { color: var(--text-secondary); }
+
+/* Checkmarks dans le tableau */
+.check-mark {
+  color: var(--accent-green);
+  font-weight: 700;
+}
+.check-blocked { color: var(--badge-blocked-text); }
+
+/* Empty state tableau */
+.empty-table td {
+  text-align: center;
+  padding: 2rem;
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.empty-icon { font-size: 2rem; }
+.empty-state p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ── Zone B : Colonnes FDC ───────────────────────────────────── */
+#zone-fdc {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+}
+
+#fdc-scroll-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+}
+
+#fdc-columns {
+  display: flex;
+  gap: 0.625rem;
+  height: 100%;
+  align-items: stretch;
+}
+
+/* Colonne individuelle FDC */
+.fdc-column {
+  flex: 0 0 220px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  max-height: none;
+}
+
+.fdc-column.drag-over {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3);
+}
+
+.fdc-column.imbalanced {
+  border-color: rgba(210, 153, 34, 0.5);
+}
+
+.fdc-gouvernante {
+  border-color: rgba(188, 140, 255, 0.4);
+}
+
+/* Header colonne FDC */
+.fdc-header {
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-active);
+  border-bottom: 1px solid var(--border);
+  gap: 0.4rem;
+  min-height: 34px;
+}
+
+.fdc-name {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  outline: none;
+  border-radius: 3px;
+  padding: 1px 3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fdc-name:focus {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+.gouvernante-label {
+  color: var(--accent-purple);
+}
+
+.gov-crown {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.imbalance-indicator {
+  color: var(--accent-orange);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.btn-remove-fdc {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.btn-remove-fdc:hover {
+  background: rgba(248, 81, 73, 0.15);
+  color: var(--accent-red);
+}
+
+/* Stats FDC */
+.fdc-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+}
+
+.stat-item {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 20px;
+  border: 1px solid transparent;
+}
+
+.stat-depart {
+  background: var(--badge-depart-bg);
+  color: var(--badge-depart-text);
+  border-color: var(--badge-depart-border);
+}
+.stat-recouche {
+  background: var(--badge-recouche-bg);
+  color: var(--badge-recouche-text);
+  border-color: var(--badge-recouche-border);
+}
+.stat-total {
+  background: var(--bg-active);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+.stat-twin {
+  background: var(--badge-twin-bg);
+  color: var(--badge-twin-text);
+  border-color: var(--badge-twin-border);
+}
+.stat-gl {
+  background: var(--badge-gl-bg);
+  color: var(--badge-gl-text);
+  border-color: var(--badge-gl-border);
+}
+
+/* Liste de chambres dans la colonne FDC */
+.fdc-rooms {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 60px;
+}
+
+/* ── Cartes chambre ──────────────────────────────────────────── */
+.room-card {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.6rem;
+  cursor: grab;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+  user-select: none;
+}
+
+.room-card:hover {
+  border-color: var(--accent-blue);
+  background: var(--bg-hover);
+}
+
+.room-card.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.room-card.status-depart  { border-left-color: var(--accent-red);    }
+.room-card.status-recouche { border-left-color: var(--accent-orange); }
+.room-card.status-propre   { border-left-color: var(--accent-green);  }
+.room-card.blocked         { border-left-color: var(--text-muted); opacity: 0.6; }
+
+.room-card-main {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.room-number {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 32px;
+}
+
+.room-floor {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.room-note {
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Badges ──────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-red    { background: var(--badge-depart-bg);   color: var(--badge-depart-text);   border-color: var(--badge-depart-border);   }
+.badge-orange { background: var(--badge-recouche-bg); color: var(--badge-recouche-text); border-color: var(--badge-recouche-border); }
+.badge-green  { background: var(--badge-propre-bg);   color: var(--badge-propre-text);   border-color: var(--badge-propre-border);   }
+.badge-gray   { background: var(--badge-blocked-bg);  color: var(--badge-blocked-text);  border-color: var(--badge-blocked-border);  }
+.badge-blue   { background: var(--badge-twin-bg);     color: var(--badge-twin-text);     border-color: var(--badge-twin-border);     }
+.badge-purple { background: var(--badge-gl-bg);       color: var(--badge-gl-text);       border-color: var(--badge-gl-border);       }
+
+/* ── Zone C1 + C2 : Non attribuées / Bloquées ───────────────── */
+#zone-unassigned,
+#zone-blocked {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+}
+
+.room-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: 54px;
+  max-height: 175px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  transition: all 0.2s;
+  align-content: flex-start;
+}
+
+.room-pool.drag-over {
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.06);
+}
+
+.room-pool-blocked {
+  border-color: transparent;
+  background: var(--bg-elevated);
+}
+
+.pool-empty {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-style: italic;
+  padding: 0.5rem;
+  align-self: center;
+}
+
+/* Room card compacte dans le pool */
+.room-pool .room-card {
+  padding: 0.3rem 0.5rem;
+}
+
+/* ── Toasts ──────────────────────────────────────────────────── */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.25s ease;
+  pointer-events: all;
+  max-width: 320px;
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-success { border-color: rgba(63, 185, 80, 0.5);   color: var(--accent-green);  }
+.toast-error   { border-color: rgba(248, 81, 73, 0.5);   color: var(--accent-red);    }
+.toast-info    { border-color: rgba(88, 166, 255, 0.35); color: var(--text-primary);  }
+
+/* ── Max Départs / Recouches ─────────────────────────────────── */
+.options-maxdr {
+  display: none;           /* caché par défaut */
+  align-items: center;
+  gap: 1rem;
+  padding: 0 0.5rem;
+  border-left: 1px solid var(--border);
+}
+
+.options-maxdr.visible { display: flex; }
+
+.maxdr-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.maxdr-text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.maxdr-input {
+  width: 56px;
+  background: var(--bg-active);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.25rem 0.45rem;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.maxdr-input:focus { border-color: var(--accent-blue); }
+.maxdr-input::placeholder { color: var(--text-muted); }
+
+/* ── Bouton GL/Twin désactivé ────────────────────────────────── */
+.btn-bed-disabled {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.3;
+  padding: 0.2rem 0.45rem;
+  cursor: default;
+}
+
+/* ── Bouton Bloquer désactivé ────────────────────────────────── */
+.btn-blocked-disabled {
+  color: var(--text-muted);
+  opacity: 0.25;
+  font-size: 0.8rem;
+  cursor: default;
+}
+
+/* ── Numéro de chambre coloré dans les colonnes statut ──────── */
+.room-num-status {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
+}
+
+.status-num-depart   { background: var(--badge-depart-bg);   color: var(--badge-depart-text);   border: 1px solid var(--badge-depart-border);   }
+.status-num-recouche { background: var(--badge-recouche-bg); color: var(--badge-recouche-text); border: 1px solid var(--badge-recouche-border); }
+.status-num-propre   { background: var(--badge-propre-bg);   color: var(--badge-propre-text);   border: 1px solid var(--badge-propre-border);   }
+
+/* ── Boutons GL / Twin dans le tableau ───────────────────────── */
+.btn-bed {
+  background: var(--bg-active);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.btn-bed:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.btn-bed.active-gl {
+  background: var(--badge-gl-bg);
+  border-color: var(--badge-gl-border);
+  color: var(--badge-gl-text);
+}
+
+.btn-bed.active-twin {
+  background: var(--badge-twin-bg);
+  border-color: var(--badge-twin-border);
+  color: var(--badge-twin-text);
+}
+
+/* ── Bouton Bloquer ──────────────────────────────────────────── */
+.btn-blocked {
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+  border-radius: 3px;
+  transition: all 0.15s;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.btn-blocked:hover  { opacity: 1; }
+.btn-blocked.active { opacity: 1; }
+
+/* ── Cellule statut ──────────────────────────────────────────── */
+.cell-status { text-align: center; }
+
+/* ── Badge étages dans les colonnes FDC ─────────────────────── */
+.floors-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-base);
+  border: 1px solid var(--border-muted);
+  border-radius: 20px;
+  padding: 0.1rem 0.45rem;
+  white-space: nowrap;
+}
+
+/* ── Scrollbars ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ════════════════════════════════════════════════════════════════
+   IMPRESSION (@media print)
+   ════════════════════════════════════════════════════════════════ */
+@media print {
+  /* Masquer tout l'écran principal */
+  #app-header,
+  #options-bar,
+  #app-main,
+  #toast-container {
+    display: none !important;
+  }
+
+  /* Afficher uniquement le layout d'impression */
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+    font-family: Arial, sans-serif;
+    font-size: 10pt;
+    margin: 0;
+  }
+
+  .print-page {
+    page-break-after: always;
+    padding: 12mm 14mm 10mm 14mm;
+  }
+
+  .print-page:last-child {
+    page-break-after: avoid;
+  }
+
+  /* ── En-tête de la feuille ──────────────────────────────── */
+  .print-header-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 2px solid #000;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+
+  .print-date {
+    font-size: 9pt;
+    color: #555;
+  }
+
+  .print-emp-name {
+    font-size: 16pt;
+    font-weight: bold;
+    text-align: center;
+    flex: 1;
+    padding: 0 12px;
+  }
+
+  .print-summary {
+    font-size: 9pt;
+    color: #555;
+    text-align: right;
+  }
+
+  /* ── Tableau de répartition ─────────────────────────────── */
+  .print-fdc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+  }
+
+  .print-fdc-table thead tr {
+    background: #ddd;
+  }
+
+  .print-fdc-table th {
+    border: 1.5px solid #555;
+    padding: 4px 6px;
+    font-weight: bold;
+    font-size: 9pt;
+    text-align: center;
+  }
+
+  .print-fdc-table td {
+    border: 1px solid #aaa;
+    padding: 4px 6px;
+    vertical-align: middle;
+  }
+
+  /* Colonnes spécifiques */
+  .pt-num    { text-align: center; font-weight: bold; width: 44px; font-size: 10pt; }
+  .pt-d      { text-align: center; width: 26px; }
+  .pt-r      { text-align: center; width: 26px; }
+  .pt-double { width: 140px; font-size: 8.5pt; font-weight: 600; }
+  .pt-twin   { width: 140px; font-size: 8.5pt; font-weight: 600; }
+  .pt-note   { color: #555; font-style: italic; }
+
+  /* Croix D/R */
+  .print-x {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #000;
+    line-height: 1;
+  }
+
+  /* Ligne séparatrice d'étage */
+  .print-floor-sep td {
+    height: 8px;
+    background: #f0f0f0;
+    border-left-color: #aaa;
+    border-right-color: #aaa;
+    border-top: none;
+    border-bottom: none;
+  }
+
+  /* Alternance légère */
+  .print-fdc-table tbody tr:not(.print-floor-sep):nth-child(even) td {
+    background: #fafafa;
+  }
+
+  /* Page récap */
+  .print-recap-page .print-emp-name {
+    font-size: 13pt;
+  }
+}
+
+/* Cacher le layout d'impression en mode normal */
+.print-only {
+  display: none;
+}

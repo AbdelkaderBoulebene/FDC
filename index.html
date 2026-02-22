@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FDC — Répartition Femmes de Chambre</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════ HEADER ═══ -->
+  <header id="app-header">
+    <div class="header-brand">
+      <div class="brand-icon">🏨</div>
+      <div class="brand-text">
+        <h1>Répartition FDC</h1>
+        <span class="brand-sub">Femmes de Chambre</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <input type="file" id="file-input" accept=".xls,.xlsx" hidden>
+      <input type="file" id="template-input" accept=".xlsx" hidden>
+
+      <!-- ── Étapes workflow (ordre visuel = ordre d'usage) ── -->
+      <div class="workflow-steps">
+        <!-- ① Modèle hôtel -->
+        <button id="btn-load-template" class="btn btn-step"
+          title="Étape 1 — Charger le modèle Excel de l'hôtel (Feuille de Femme de Chambre.xlsx)">
+          <span class="step-badge" data-step="1"></span>
+          <span class="btn-icon">📋</span>
+          <span id="template-status">Modèle</span>
+        </button>
+
+        <span class="workflow-chevron">›</span>
+
+        <!-- ② Importer les chambres -->
+        <button id="btn-import" class="btn btn-step"
+          title="Étape 2 — Importer le fichier des chambres du jour (.xlsx)">
+          <span class="step-badge" data-step="2"></span>
+          <span class="btn-icon">📂</span>
+          <span id="import-status">Chambres</span>
+        </button>
+
+        <span class="workflow-chevron">›</span>
+
+        <!-- ③ Répartir -->
+        <button id="btn-distribute" class="btn btn-step btn-step--primary" disabled
+          title="Étape 3 — Lancer la répartition automatique des chambres">
+          <span class="step-badge" data-step="3"></span>
+          <span class="btn-icon">⚡</span>
+          Répartir
+        </button>
+      </div>
+
+      <button id="btn-reset" class="btn btn-ghost" title="Réinitialiser les chambres">
+        <span class="btn-icon">↺</span>
+      </button>
+
+      <div class="btn-separator"></div>
+
+      <button id="btn-export-pdf" class="btn btn-outline" disabled title="Imprimer les feuilles de travail">
+        <span class="btn-icon">🖨</span> Imprimer
+      </button>
+      <button id="btn-export-excel" class="btn btn-outline" disabled title="Exporter vers Excel">
+        <span class="btn-icon">📊</span> Excel
+      </button>
+
+      <div class="btn-separator"></div>
+
+      <button id="btn-options-toggle" class="btn btn-ghost" onclick="toggleOptionsPanel()" title="Options">⚙</button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════ OPTIONS ════ -->
+  <section id="options-bar" class="options-hidden">
+    <div class="options-group">
+      <label class="toggle-label">
+        <input type="checkbox" id="opt-balance-bedtype">
+        <span class="toggle-slider"></span>
+        <span class="toggle-text">Équilibrer Twin / Grand lit</span>
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="opt-ignore-floor">
+        <span class="toggle-slider"></span>
+        <span class="toggle-text">Ignorer regroupement par étage</span>
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="opt-gouvernante">
+        <span class="toggle-slider"></span>
+        <span class="toggle-text">Activer gouvernante</span>
+      </label>
+    </div>
+
+    <!-- Max D/R : visible uniquement quand gouvernante activée -->
+    <div class="options-maxdr" id="options-maxdr">
+      <label class="maxdr-label">
+        <span class="maxdr-text">Max Départs / FDC</span>
+        <input type="number" id="inp-max-departs" class="maxdr-input"
+               min="1" max="50" placeholder="—"
+               title="Limite le nombre de Départs par FDC (la gouvernante prend le reste)">
+      </label>
+      <label class="maxdr-label">
+        <span class="maxdr-text">Max Recouches / FDC</span>
+        <input type="number" id="inp-max-recouches" class="maxdr-input"
+               min="1" max="50" placeholder="—"
+               title="Limite le nombre de Recouches par FDC (la gouvernante prend le reste)">
+      </label>
+    </div>
+
+    <div class="options-info" id="options-summary"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ MAIN ══════ -->
+  <main id="app-main">
+
+    <!-- ──────────────────── ZONES A + C : côte à côte ──────── -->
+    <div id="zone-top">
+
+      <!-- Zone A : Toutes les chambres -->
+      <section id="zone-rooms">
+        <div class="zone-header">
+          <div class="zone-title">
+            <h2>Toutes les chambres</h2>
+            <span id="rooms-count" class="count-badge">0 chambre</span>
+          </div>
+          <div class="zone-actions">
+            <button class="btn btn-sm btn-outline" id="btn-toggle-floor"
+                    onclick="toggleFloorColumn()" title="Masquer colonne Étage">Étage ⇔</button>
+            <button class="btn-collapse" id="btn-collapse-rooms" onclick="toggleZoneRooms()">▼</button>
+          </div>
+        </div>
+        <div class="table-wrapper" id="rooms-table-wrapper">
+          <table id="rooms-table">
+            <colgroup>
+              <col style="width:52px">  <!-- Ch.   -->
+              <col class="th-floor" style="width:30px">  <!-- Ét.   -->
+              <col style="width:58px">  <!-- D     -->
+              <col style="width:58px">  <!-- R     -->
+              <col style="width:58px">  <!-- P     -->
+              <col style="width:40px">  <!-- GL    -->
+              <col style="width:40px">  <!-- TW    -->
+              <col style="width:40px">  <!-- Bloq. -->
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Chambre</th>
+                <th class="th-floor">Étage</th>
+                <th>Départ</th>
+                <th>Recouche</th>
+                <th>Propre</th>
+                <th>Grand Lit</th>
+                <th>Twin</th>
+                <th>Bloquer</th>
+              </tr>
+            </thead>
+            <tbody id="rooms-tbody">
+              <tr id="rooms-empty-row">
+                <td colspan="8" class="empty-table">
+                  <div class="empty-state">
+                    <span class="empty-icon">📋</span>
+                    <p>Importez un fichier Excel pour commencer</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Zone C1 : Non attribuées -->
+      <section id="zone-unassigned">
+        <div class="zone-header">
+          <div class="zone-title">
+            <h2>Non attribuées</h2>
+            <span id="unassigned-count" class="count-badge count-warning">0</span>
+          </div>
+        </div>
+        <div id="unassigned-pool"
+             class="room-pool drop-zone"
+             data-employee-id="unassigned"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event, 'unassigned')">
+          <p class="pool-empty">Aucune chambre non attribuée</p>
+        </div>
+      </section>
+
+      <!-- Zone C2 : Bloquées -->
+      <section id="zone-blocked">
+        <div class="zone-header">
+          <div class="zone-title">
+            <h2>Bloquées</h2>
+            <span id="blocked-count" class="count-badge count-gray">0</span>
+          </div>
+        </div>
+        <div id="blocked-pool" class="room-pool room-pool-blocked">
+          <p class="pool-empty">Aucune chambre bloquée</p>
+        </div>
+      </section>
+
+    </div><!-- /#zone-top -->
+
+    <!-- ──────────────────── ZONE B : Colonnes FDC ────────────── -->
+    <section id="zone-fdc">
+      <div class="zone-header">
+        <div class="zone-title">
+          <h2>Répartition par employée</h2>
+          <span id="distributed-count" class="count-badge">0 attribuée</span>
+        </div>
+        <button id="btn-add-fdc" class="btn btn-sm btn-secondary" onclick="addEmployee()">
+          + Ajouter FDC
+        </button>
+      </div>
+      <div id="fdc-scroll-wrapper">
+        <div id="fdc-columns">
+          <!-- Colonnes générées par ui.js -->
+        </div>
+      </div>
+    </section>
+
+
+  </main>
+
+  <!-- ══════════════════════════════════════ PRINT LAYOUT ═══════ -->
+  <!-- Cette section est uniquement visible à l'impression -->
+  <div id="print-layout" class="print-only">
+    <!-- Généré dynamiquement par export.js -->
+  </div>
+
+  <!-- ══════════════════════════════════════════════ TOAST ══════ -->
+  <div id="toast-container"></div>
+
+  <!-- ════════════════════════════════════════════ SCRIPTS ══════ -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/importer.js"></script>
+  <script src="js/algorithm.js"></script>
+  <script src="js/dragdrop.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
