@@ -27,6 +27,10 @@ function loadState() {
     const parsed = JSON.parse(raw);
     // Vérification basique de structure
     if (!parsed.rooms || !parsed.employees || !parsed.options) return null;
+    // Migration : ajouter knownNames si absent (ancienne sauvegarde)
+    if (!parsed.knownNames) parsed.knownNames = [];
+    // Migration : ajouter active:true si absent (ancienne sauvegarde)
+    if (parsed.employees) parsed.employees.forEach(e => { if (e.active === undefined) e.active = true; });
     return parsed;
   } catch (e) {
     console.warn('[FDC] Impossible de charger depuis localStorage:', e);

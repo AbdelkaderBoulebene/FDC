@@ -77,11 +77,6 @@
   <section id="options-bar" class="options-hidden">
     <div class="options-group">
       <label class="toggle-label">
-        <input type="checkbox" id="opt-balance-bedtype">
-        <span class="toggle-slider"></span>
-        <span class="toggle-text">Équilibrer Twin / Grand lit</span>
-      </label>
-      <label class="toggle-label">
         <input type="checkbox" id="opt-ignore-floor">
         <span class="toggle-slider"></span>
         <span class="toggle-text">Ignorer regroupement par étage</span>
@@ -126,6 +121,8 @@
             <span id="rooms-count" class="count-badge">0 chambre</span>
           </div>
           <div class="zone-actions">
+            <button class="btn btn-sm btn-ghost" id="btn-toggle-propre"
+                    onclick="togglePropreRooms()" title="Masquer / afficher les chambres Propres">👁</button>
             <button class="btn btn-sm btn-outline" id="btn-toggle-floor"
                     onclick="toggleFloorColumn()" title="Masquer colonne Étage">Étage ⇔</button>
             <button class="btn-collapse" id="btn-collapse-rooms" onclick="toggleZoneRooms()">▼</button>
@@ -209,13 +206,16 @@
           <h2>Répartition par employée</h2>
           <span id="distributed-count" class="count-badge">0 attribuée</span>
         </div>
-        <button id="btn-add-fdc" class="btn btn-sm btn-secondary" onclick="addEmployee()">
-          + Ajouter FDC
-        </button>
       </div>
-      <div id="fdc-scroll-wrapper">
-        <div id="fdc-columns">
-          <!-- Colonnes générées par ui.js -->
+      <div id="fdc-main-area">
+        <div id="fdc-scroll-wrapper">
+          <div id="fdc-columns">
+            <!-- Colonnes générées par ui.js -->
+          </div>
+        </div>
+        <div id="fdc-sidebar">
+          <button class="btn btn-sm btn-secondary" id="btn-add-fdc" onclick="addEmployee()">+ Ajouter FDC</button>
+          <div id="fdc-employee-list"></div>
         </div>
       </div>
     </section>

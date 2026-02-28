@@ -4,6 +4,7 @@
 
 // ── État UI ───────────────────────────────────────────────────
 let _floorColumnVisible = true;   // visibilité colonne Étage
+let _hidePropreRooms    = false;  // masquer les chambres Propres du tableau
 
 // ── Règle : quelles chambres peuvent être GL ou Twin ─────────
 /**
@@ -66,7 +67,12 @@ function renderRoomsTable(rooms) {
   const tbody   = document.getElementById('rooms-tbody');
   const countEl = document.getElementById('rooms-count');
 
-  countEl.textContent = `${rooms.length} chambre${rooms.length !== 1 ? 's' : ''}`;
+  // Filtrer les chambres Propres si option active
+  const visible = _hidePropreRooms ? rooms.filter(r => r.status !== 'PROPRE') : rooms;
+  const hidden  = rooms.length - visible.length;
+
+  countEl.textContent = `${visible.length} chambre${visible.length !== 1 ? 's' : ''}` +
+    (hidden > 0 ? ` (${hidden} propres masquées)` : '');
 
   if (rooms.length === 0) {
     tbody.innerHTML = `
@@ -81,10 +87,17 @@ function renderRoomsTable(rooms) {
     return;
   }
 
-  tbody.innerHTML = rooms.map(room => buildRoomRow(room)).join('');
+  tbody.innerHTML = visible.map(room => buildRoomRow(room)).join('');
 
   // Appliquer la visibilité de la colonne Étage
   applyFloorColumnVisibility();
+}
+
+function togglePropreRooms() {
+  _hidePropreRooms = !_hidePropreRooms;
+  const btn = document.getElementById('btn-toggle-propre');
+  if (btn) btn.classList.toggle('active', _hidePropreRooms);
+  renderRoomsTable(window.AppState.rooms);
 }
 
 /**
@@ -184,16 +197,6 @@ function renderEmployeeColumns(employees, options) {
 
   const buildColumn = (employee, isGouvernante = false) => {
     const stats = calcStats(employee);
-    const THRESHOLD = 1.5;
-
-    const isImbalanced = !isGouvernante && activeFDC.length > 1 && (
-      (avgD > 0 && Math.abs(stats.departs   - avgD)  > THRESHOLD) ||
-      (avgR > 0 && Math.abs(stats.recouches - avgR)  > THRESHOLD) ||
-      (options.balanceBedType && (
-        (avgTw > 0 && Math.abs(stats.twins    - avgTw) > THRESHOLD) ||
-        (avgGL > 0 && Math.abs(stats.grandLits- avgGL) > THRESHOLD)
-      ))
-    );
 
     const nbFloors  = floorCount(employee);
     const floorList = [...new Set(employee.rooms.map(r => r.floor))].sort((a, b) => a - b);
@@ -203,17 +206,17 @@ function renderEmployeeColumns(employees, options) {
       a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true })
     );
 
-    const bedStatsHtml = options.balanceBedType ? `
+    const bedStatsHtml = `
       <span class="stat-item stat-twin"  title="Twin">${stats.twins} TW</span>
       <span class="stat-item stat-gl"    title="Grand lit">${stats.grandLits} GL</span>
-    ` : '';
+    `;
 
     const floorsBadge = !isGouvernante && nbFloors > 0
       ? `<span class="floors-badge" title="Étages : ${floorList.join(', ')}">Ét. ${floorList.join('·')}</span>`
       : '';
 
     return `
-      <div class="fdc-column ${isImbalanced ? 'imbalanced' : ''} ${isGouvernante ? 'fdc-gouvernante' : ''}"
+      <div class="fdc-column ${isGouvernante ? 'fdc-gouvernante' : ''}"
            data-employee-id="${escapeHtml(employee.id)}"
            ondragover="handleDragOver(event)"
            ondragleave="handleDragLeave(event)"
@@ -228,8 +231,6 @@ function renderEmployeeColumns(employees, options) {
                 onblur="renameEmployee('${escapeHtml(employee.id)}', this.textContent.trim())"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
           >${escapeHtml(employee.name)}</span>
-          ${isImbalanced ? '<span class="imbalance-indicator" title="Déséquilibre détecté">⚠</span>' : ''}
-          ${!isGouvernante ? `<button class="btn-remove-fdc" onclick="removeEmployee('${escapeHtml(employee.id)}')" title="Supprimer">✕</button>` : ''}
         </div>
 
         <div class="fdc-stats">
@@ -254,7 +255,7 @@ function renderEmployeeColumns(employees, options) {
     `;
   };
 
-  const fdcHTML         = activeFDC.map(e => buildColumn(e, false)).join('');
+  const fdcHTML         = activeFDC.filter(e => e.active !== false).map(e => buildColumn(e, false)).join('');
   const gouvernanteHTML = (options.gouvernanteActive && gouvernante)
     ? buildColumn(gouvernante, true)
     : '';
@@ -316,10 +317,25 @@ function renderUnassignedPool(rooms, employees) {
     : '<p class="pool-empty">Aucune chambre bloquée</p>';
 }
 
+// ── Sidebar FDC : liste avec checkboxes actif/inactif ─────────
+function renderFDCSidebar(employees) {
+  const list = document.getElementById('fdc-employee-list');
+  if (!list) return;
+  const fdcs = employees.filter(e => !e.isGouvernante);
+  list.innerHTML = fdcs.map(emp => `
+    <div class="fdc-toggle-item ${emp.active === false ? 'inactive' : ''}">
+      <input type="checkbox" id="fdc-cb-${escapeHtml(emp.id)}" ${emp.active !== false ? 'checked' : ''}
+             onchange="toggleEmployeeActive('${escapeHtml(emp.id)}')">
+      <label for="fdc-cb-${escapeHtml(emp.id)}" class="fdc-toggle-name">${escapeHtml(emp.name)}</label>
+      <button class="btn-remove-fdc" onclick="removeEmployee('${escapeHtml(emp.id)}')" title="Supprimer">✕</button>
+    </div>`).join('');
+}
+
 // ── Rendu global ──────────────────────────────────────────────
 function renderAll(state) {
   renderRoomsTable(state.rooms);
   renderEmployeeColumns(state.employees, state.options);
+  renderFDCSidebar(state.employees);
   renderUnassignedPool(state.rooms, state.employees);
 
   const hasRooms = state.rooms.length > 0;
@@ -335,7 +351,6 @@ function renderAll(state) {
 
   const opts = state.options;
   const parts = [];
-  if (opts.balanceBedType)    parts.push('Twin/GL équilibré');
   if (opts.ignoreFloor)       parts.push('Étages ignorés');
   if (opts.gouvernanteActive) {
     const maxD = opts.maxDeparts  ? `max ${opts.maxDeparts}D` : '';

@@ -620,6 +620,13 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 0.65rem 1rem;
+  overflow: hidden;
+}
+
+#fdc-main-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 #fdc-scroll-wrapper {
@@ -629,6 +636,52 @@ body {
   overflow-y: hidden;
   padding-bottom: 0.5rem;
 }
+
+#fdc-sidebar {
+  width: 148px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0 0 0.5rem 0.6rem;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.fdc-toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.fdc-toggle-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.fdc-toggle-item input[type="checkbox"] {
+  accent-color: var(--accent-blue);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.fdc-toggle-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fdc-toggle-item.inactive .fdc-toggle-name { opacity: 0.45; }
+
+.fdc-column.fdc-inactive { opacity: 0.4; }
 
 #fdc-columns {
   display: flex;

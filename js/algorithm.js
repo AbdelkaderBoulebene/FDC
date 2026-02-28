@@ -5,7 +5,7 @@
  *  P1 : Équilibre RECOUCHES entre FDCs (distribuer en premier)
  *  P2 : Chaque FDC travaille sur le MOINS d'étages possible
  *  P3 : Équilibre DÉPARTS entre FDCs
- *  P4 : Équilibre Twin / Grand lit (si option ON)
+ *  P4 : Équilibre Twin / Grand lit (toujours actif)
  *
  * Stratégie two-phase :
  *  Phase 1 — Recouches : score = équilibre R fort + regroupement étage léger
@@ -88,8 +88,8 @@ function scoreAssignment(employee, room, options, targets, phase) {
     else            score -= 20 * Math.abs(ecart);
   }
 
-  // ── P4 : Équilibre Twin / Grand lit (si activé)
-  if (options.balanceBedType && room.bedType !== 'NONE') {
+  // ── P4 : Équilibre Twin / Grand lit (toujours actif)
+  if (room.bedType !== 'NONE') {
     const currentBed = rooms.filter(r => r.bedType === room.bedType).length;
     const targetBed  = room.bedType === 'TWIN' ? targets.twins : targets.grandLits;
     if (currentBed > targetBed) {
@@ -132,7 +132,7 @@ function sortByFloor(rooms) {
  */
 function distributeRooms(rooms, employees, options) {
   const allEmployees = employees.map(e => ({ ...e, rooms: [] }));
-  const activeFDC    = allEmployees.filter(e => !e.isGouvernante);
+  const activeFDC    = allEmployees.filter(e => !e.isGouvernante && e.active !== false);
   const gouvernante  = allEmployees.find(e => e.isGouvernante);
 
   if (activeFDC.length === 0) return allEmployees;
@@ -209,9 +209,22 @@ function distributeRooms(rooms, employees, options) {
     balanceByMove(activeFDC, 'RECOUCHE', options);
   }
 
-  // ── Étape 6 : Équilibrage Twin / Grand lit
-  if (options.balanceBedType && activeFDC.length > 1) {
+  // ── Étape 6 : Équilibrage Twin / Grand lit (toujours)
+  if (activeFDC.length > 1) {
     balanceBedTypes(activeFDC);
+  }
+
+  // ── Étape 7 : Minimisation des étages par échanges sûrs
+  // Échange uniquement des chambres de même status ET même bedType
+  // → D/R/TW/GL inchangés, contraintes ±1 préservées
+  if (activeFDC.length > 1) {
+    optimizeFloors(activeFDC);
+  }
+
+  // ── Étape 8 : Optimisation étages pour la gouvernante (si active)
+  // Inclut la gouvernante dans les échanges pour grouper ses étages
+  if (options.gouvernanteActive && gouvernante && gouvernante.rooms.length > 0 && activeFDC.length > 0) {
+    optimizeFloors([...activeFDC, gouvernante]);
   }
 
   return allEmployees;
@@ -269,8 +282,8 @@ function findBeneficialSwap(fdc1, fdc2, targetTwins, targetGLs, imbalanceBefore)
            Math.abs(tw2 - targetTwins) + Math.abs(gl2 - targetGLs);
   };
 
-  for (const bed1 of ['TWIN', 'GRAND_LIT']) {
-    for (const bed2 of ['TWIN', 'GRAND_LIT']) {
+  for (const bed1 of ['TWIN', 'GRAND_LIT', 'NONE']) {
+    for (const bed2 of ['TWIN', 'GRAND_LIT', 'NONE']) {
       if (bed1 === bed2) continue;
       for (const r1 of fdc1.rooms.filter(r => r.bedType === bed1)) {
         for (const r2 of fdc2.rooms.filter(r => r.bedType === bed2)) {
@@ -292,6 +305,40 @@ function findBeneficialSwap(fdc1, fdc2, targetTwins, targetGLs, imbalanceBefore)
  * @param {string} statusType - 'DEPART' ou 'RECOUCHE'
  * @param {Object} options    - pour vérifier maxDeparts/maxRecouches
  */
+// ── Minimisation des étages par échanges ─────────────────────
+function distinctFloors(emp) {
+  return new Set(emp.rooms.map(r => r.floor)).size;
+}
+
+function optimizeFloors(activeFDC) {
+  let improved = true, iter = 0;
+  while (improved && iter < 500) {
+    improved = false; iter++;
+    outer: for (let i = 0; i < activeFDC.length; i++) {
+      for (let j = i + 1; j < activeFDC.length; j++) {
+        const A = activeFDC[i], B = activeFDC[j];
+        const before = distinctFloors(A) + distinctFloors(B);
+        for (const rA of A.rooms) {
+          for (const rB of B.rooms) {
+            // Seulement même status ET même bedType → compteurs inchangés
+            if (rA.status !== rB.status || rA.bedType !== rB.bedType) continue;
+            if (rA.id === rB.id) continue;
+            const afA = new Set([...A.rooms.filter(r => r.id !== rA.id).map(r => r.floor), rB.floor]).size;
+            const afB = new Set([...B.rooms.filter(r => r.id !== rB.id).map(r => r.floor), rA.floor]).size;
+            if (afA + afB < before) {
+              const ia = A.rooms.findIndex(r => r.id === rA.id);
+              const ib = B.rooms.findIndex(r => r.id === rB.id);
+              A.rooms[ia] = { ...rB, assignedTo: A.id };
+              B.rooms[ib] = { ...rA, assignedTo: B.id };
+              improved = true; break outer;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 function balanceByMove(activeFDC, statusType, options) {
   const maxLimit = statusType === 'DEPART'
     ? (options?.gouvernanteActive ? options?.maxDeparts   : null)

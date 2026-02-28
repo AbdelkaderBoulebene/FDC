@@ -12,8 +12,7 @@ function setTemplateBuffer(buf) {
 // ── Export depuis template — manipulation ZIP/XML directe ─────
 // Charge le template XLSX (= ZIP), clone la feuille pour chaque
 // employée en injectant les valeurs via le XML brut, puis reconstruit
-// le ZIP. Tous les styles/couleurs/bordures du template sont préservés
-// car on ne touche jamais à styles.xml.
+// le ZIP. Le styles.xml est modifié uniquement pour ajouter le style X taille 14.
 async function exportExcelFromTemplate(state) {
   if (!window.JSZip) {
     showToast('JSZip non chargé — export standard utilisé', 'info');
@@ -25,7 +24,7 @@ async function exportExcelFromTemplate(state) {
   const dateStr  = today.toLocaleDateString('fr-FR');
   const fileDate = today.toISOString().slice(0, 10);
   const toExport = state.employees.filter(e =>
-    e.isGouvernante ? state.options.gouvernanteActive : true
+    e.isGouvernante ? state.options.gouvernanteActive : e.active !== false
   );
 
   try {
@@ -43,15 +42,31 @@ async function exportExcelFromTemplate(state) {
     // Styles de référence : index s de la colonne A, lignes 7-38
     const rowStyles = extractRowStyles(tplXml);
 
+    // Extraire l'index de style de F7 (référence bordures pour le X)
+    const f7StyleIdx = (() => {
+      const pos = tplXml.indexOf('r="F7"');
+      if (pos === -1) return null;
+      const start = tplXml.lastIndexOf('<c', pos);
+      if (start === -1) return null;
+      const tag = tplXml.slice(start, tplXml.indexOf('>', start) + 1);
+      const m = tag.match(/\bs="(\d+)"/);
+      return m ? m[1] : null;
+    })();
+
+    // Ajouter un style X taille 14 dans styles.xml (bordures héritées de F7)
+    const stylesXmlRaw = await zip.file('xl/styles.xml').async('text');
+    const { newStylesXml, xStyleIdx } = addXStyle(stylesXmlRaw, f7StyleIdx);
+
     // ── 2. Construire le ZIP de sortie ────────────────────────
     const outZip    = new JSZip();
     const skipPaths = new Set([
       'xl/workbook.xml', 'xl/_rels/workbook.xml.rels',
-      '[Content_Types].xml', 'xl/calcChain.xml'
+      '[Content_Types].xml', 'xl/calcChain.xml',
+      'xl/styles.xml'   // remplacé par la version modifiée
     ]);
     zip.forEach(path => { if (path.startsWith('xl/worksheets/')) skipPaths.add(path); });
 
-    // Copier tous les fichiers non modifiés (styles, sharedStrings, images…)
+    // Copier tous les fichiers non modifiés (sharedStrings, images…)
     const copies = [];
     zip.forEach((path, file) => {
       if (!skipPaths.has(path))
@@ -59,12 +74,15 @@ async function exportExcelFromTemplate(state) {
     });
     await Promise.all(copies);
 
+    // Écrire le styles.xml modifié
+    outZip.file('xl/styles.xml', newStylesXml);
+
     // ── 3. Une feuille XML par employée ──────────────────────
     const sheetDefs = [];
     toExport.forEach((emp, idx) => {
       const key = `sheet${idx + 1}.xml`;
       outZip.file(`xl/worksheets/${key}`,
-        injectDataIntoSheet(tplXml, emp, dateStr, rowStyles));
+        injectDataIntoSheet(tplXml, emp, dateStr, rowStyles, xStyleIdx));
       sheetDefs.push({ key, name: sanitizeSheetName(emp.name) });
     });
 
@@ -96,6 +114,43 @@ async function exportExcelFromTemplate(state) {
   }
 }
 
+// ── Ajout d'un style X (taille 14, gras, centré) dans styles.xml ─
+function addXStyle(stylesXml, baseCellStyleIdx) {
+  try {
+    // Hériter du borderId de la cellule de référence (ex. F7) pour préserver les bordures
+    let borderId = '0';
+    if (baseCellStyleIdx != null) {
+      const xfsSection = stylesXml.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/);
+      if (xfsSection) {
+        const xfRe = /<xf\b([^>]*)>/g;
+        let m, idx = 0;
+        while ((m = xfRe.exec(xfsSection[1])) !== null) {
+          if (idx++ === parseInt(baseCellStyleIdx)) {
+            const bM = m[1].match(/borderId="(\d+)"/);
+            if (bM) borderId = bM[1];
+            break;
+          }
+        }
+      }
+    }
+    const fontIdx = parseInt(stylesXml.match(/<fonts\s+count="(\d+)"/)[1]);
+    const xfIdx   = parseInt(stylesXml.match(/<cellXfs\s+count="(\d+)"/)[1]);
+    const font = '<font><b/><sz val="14"/><color theme="1"/><name val="Calibri"/><family val="2"/></font>';
+    const xf   = `<xf numFmtId="0" fontId="${fontIdx}" fillId="0" borderId="${borderId}" xfId="0"` +
+                 ` applyFont="1" applyBorder="1" applyAlignment="1">` +
+                 `<alignment horizontal="center" vertical="center"/></xf>`;
+    const xml = stylesXml
+      .replace(/(<fonts\s+count=")(\d+)(")/, `$1${fontIdx + 1}$3`)
+      .replace('</fonts>', font + '</fonts>')
+      .replace(/(<cellXfs\s+count=")(\d+)(")/, `$1${xfIdx + 1}$3`)
+      .replace('</cellXfs>', xf + '</cellXfs>');
+    return { newStylesXml: xml, xStyleIdx: xfIdx };
+  } catch (e) {
+    console.warn('[FDC] addXStyle: impossible de modifier styles.xml', e);
+    return { newStylesXml: stylesXml, xStyleIdx: null };
+  }
+}
+
 // ── Extraction de l'index de style de la colonne A (lignes 7-38) ─
 function extractRowStyles(sheetXml) {
   const styles = {};
@@ -117,7 +172,7 @@ function extractRowStyles(sheetXml) {
 }
 
 // ── Injection des données de l'employée dans le XML de la feuille ─
-function injectDataIntoSheet(sheetXml, employee, dateStr, rowStyles) {
+function injectDataIntoSheet(sheetXml, employee, dateStr, rowStyles, xStyleIdx) {
   let xml = sheetXml;
 
   const sorted = [...employee.rooms].sort((a, b) =>
@@ -129,24 +184,29 @@ function injectDataIntoSheet(sheetXml, employee, dateStr, rowStyles) {
   xml = upsertInlineCell(xml, 4, 'A', dateStr, null);
   xml = upsertInlineCell(xml, 4, 'C', employee.name, null);
 
-  // Lignes 7-38 : données chambres
-  for (let i = 0; i < 32; i++) {
-    const row  = 7 + i;
+  // Lignes 7-38 : données chambres, avec saut de ligne entre étages
+  const xSty = xStyleIdx != null ? String(xStyleIdx) : null;
+  let rowOffset = 0, lastFloor = null;
+  for (let i = 0; i < sorted.length; i++) {
     const room = sorted[i];
-    const sty  = rowStyles[row];
-    if (!room) continue;
+    // Insérer une ligne vide entre chaque changement d'étage
+    if (lastFloor !== null && room.floor !== lastFloor) rowOffset++;
+    const row = 7 + i + rowOffset;
+    if (row > 38) break;
+    lastFloor = room.floor;
 
     const isD  = room.status  === 'DEPART';
     const isR  = room.status  === 'RECOUCHE';
     const isGL = room.bedType === 'GRAND_LIT';
     const isTW = room.bedType === 'TWIN';
 
-    xml = upsertInlineCell(xml, row, 'E', room.roomNumber, sty);
-    if (isD)  xml = upsertInlineCell(xml, row, 'F', 'X', sty);
-    if (isR)  xml = upsertInlineCell(xml, row, 'G', 'X', sty);
-    if (isGL) xml = upsertInlineCell(xml, row, 'K', 'FAIRE EN GRAND LIT', sty);
+    // null = préserve le style d'origine du template (bordures, fond alternant)
+    xml = upsertInlineCell(xml, row, 'E', room.roomNumber, null);
+    if (isD)  xml = upsertInlineCell(xml, row, 'F', 'X', xSty ?? null);
+    if (isR)  xml = upsertInlineCell(xml, row, 'G', 'X', xSty ?? null);
+    if (isGL) xml = upsertInlineCell(xml, row, 'K', 'FAIRE EN GRAND LIT', null);
     if (isTW) xml = upsertInlineCell(xml, row, 'L',
-      isR ? 'LAISSER EN TWIN' : 'FAIRE EN TWIN', sty);
+      isR ? 'LAISSER EN TWIN' : 'FAIRE EN TWIN', null);
   }
 
   return xml;
@@ -158,8 +218,8 @@ function upsertInlineCell(sheetXml, rowNum, col, value, style) {
   const sAttr   = style ? ` s="${style}"` : '';
   const newCell = `<c r="${ref}"${sAttr} t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
 
-  // Récupère l'attribut s= d'un tag existant (préserve la mise en forme)
-  const getS = str => { const m = str.match(/\bs="(\d+)"/); return m ? ` s="${m[1]}"` : sAttr; };
+  // Récupère l'attribut s= : si style fourni explicitement, l'utiliser ; sinon préserver celui du tag
+  const getS = str => { if (style != null) return sAttr; const m = str.match(/\bs="(\d+)"/); return m ? ` s="${m[1]}"` : ''; };
 
   // Cas 1 : cellule self-closing  <c r="..." s="N"/>
   const scRe = new RegExp(`<c\\s[^>]*r="${ref}"[^>]*/>`);
@@ -448,7 +508,7 @@ function exportExcelGenerated(state) {
 
   const toExport = state.employees.filter(e => {
     if (e.isGouvernante) return state.options.gouvernanteActive;
-    return true;
+    return e.active !== false;
   });
 
   // ── Une feuille par employée ──────────────────────────────

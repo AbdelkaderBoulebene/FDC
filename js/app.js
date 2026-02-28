@@ -7,10 +7,10 @@
 
 // ── État global ──────────────────────────────────────────────
 window.AppState = {
-  rooms:     [],
-  employees: [],
+  rooms:      [],
+  employees:  [],
+  knownNames: [],   // noms des FDC supprimées, pour réutilisation
   options: {
-    balanceBedType:    false,
     ignoreFloor:       false,
     gouvernanteActive: false,
     maxDeparts:        null,  // null = pas de limite
@@ -22,7 +22,7 @@ window.AppState = {
 function buildDefaultEmployees() {
   const fdcs = [];
   for (let i = 1; i <= 7; i++) {
-    fdcs.push({ id: `fdc${i}`, name: `FDC ${i}`, isGouvernante: false, rooms: [] });
+    fdcs.push({ id: `fdc${i}`, name: `FDC ${i}`, isGouvernante: false, active: true, rooms: [] });
   }
   fdcs.push({ id: 'gouvernante', name: 'Gouvernante', isGouvernante: true, rooms: [] });
   return fdcs;
@@ -30,7 +30,6 @@ function buildDefaultEmployees() {
 
 // ── Synchronisation des checkboxes avec l'état ───────────────
 function syncCheckboxes(options) {
-  document.getElementById('opt-balance-bedtype').checked = options.balanceBedType    || false;
   document.getElementById('opt-ignore-floor').checked    = options.ignoreFloor       || false;
   document.getElementById('opt-gouvernante').checked     = options.gouvernanteActive || false;
   const inpD = document.getElementById('inp-max-departs');
@@ -107,9 +106,9 @@ function initApp() {
       return;
     }
 
-    const activeFDC = state.employees.filter(e => !e.isGouvernante);
+    const activeFDC = state.employees.filter(e => !e.isGouvernante && e.active !== false);
     if (activeFDC.length === 0) {
-      showToast('Ajoutez au moins une femme de chambre', 'error');
+      showToast('Ajoutez au moins une femme de chambre active', 'error');
       return;
     }
 
@@ -132,7 +131,7 @@ function initApp() {
     window.AppState.rooms = [];
     window.AppState.employees.forEach(emp => { emp.rooms = []; });
     window.AppState.options = {
-      balanceBedType: false, ignoreFloor: false, gouvernanteActive: false,
+      ignoreFloor: false, gouvernanteActive: false,
       maxDeparts: null, maxRecouches: null
     };
 
@@ -182,13 +181,6 @@ function initApp() {
     exportExcel(window.AppState);
   });
 
-  // ── Options : Équilibrer Twin/Grand lit ───────────────────
-  document.getElementById('opt-balance-bedtype').addEventListener('change', (e) => {
-    window.AppState.options.balanceBedType = e.target.checked;
-    saveState(window.AppState);
-    renderAll(window.AppState);
-  });
-
   // ── Options : Ignorer étages ──────────────────────────────
   document.getElementById('opt-ignore-floor').addEventListener('change', (e) => {
     window.AppState.options.ignoreFloor = e.target.checked;
@@ -227,10 +219,16 @@ function addEmployee() {
   const id         = 'fdc_' + Date.now();
   const fdcCount   = state.employees.filter(e => !e.isGouvernante).length + 1;
 
+  // Réutiliser un nom mémorisé s'il n'est pas déjà actif
+  const usedNames = new Set(state.employees.map(e => e.name));
+  const recycled  = (state.knownNames || []).find(n => !usedNames.has(n));
+  const name      = recycled || `FDC ${fdcCount}`;
+
   const newEmployee = {
     id,
-    name:           `FDC ${fdcCount}`,
+    name,
     isGouvernante:  false,
+    active:         true,
     rooms:          []
   };
 
@@ -256,6 +254,10 @@ function removeEmployee(employeeId) {
 
   const roomCount = emp.rooms.length;
 
+  // Mémoriser le nom pour réutilisation future
+  if (!state.knownNames) state.knownNames = [];
+  if (!state.knownNames.includes(emp.name)) state.knownNames.push(emp.name);
+
   // Retirer l'employée (les chambres retournent automatiquement au pool
   // car renderUnassignedPool calcule les non-assignées depuis state.rooms)
   state.employees = state.employees.filter(e => e.id !== employeeId);
@@ -270,6 +272,17 @@ function removeEmployee(employeeId) {
 }
 
 /**
+ * Basculer l'état actif/inactif d'une FDC
+ */
+function toggleEmployeeActive(id) {
+  const emp = window.AppState.employees.find(e => e.id === id);
+  if (!emp) return;
+  emp.active = !emp.active;
+  saveState(window.AppState);
+  renderAll(window.AppState);
+}
+
+/**
  * Renommer une FDC (appelé onblur du champ contenteditable)
  */
 function renameEmployee(employeeId, newName) {
@@ -280,6 +293,7 @@ function renameEmployee(employeeId, newName) {
   if (trimmed && trimmed !== emp.name) {
     emp.name = trimmed;
     saveState(window.AppState);
+    renderFDCSidebar(window.AppState.employees);
   }
 }
 
