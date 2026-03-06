@@ -344,6 +344,28 @@ function distinctFloors(emp) {
 }
 
 function optimizeFloors(activeFDC) {
+  const n     = activeFDC.length;
+  const totTW = activeFDC.reduce((s, e) => s + e.rooms.filter(r => r.bedType === 'TWIN').length, 0);
+  const totGL = activeFDC.reduce((s, e) => s + e.rooms.filter(r => r.bedType === 'GRAND_LIT').length, 0);
+  const minTW = Math.floor(totTW / n), maxTW = Math.ceil(totTW / n);
+  const minGL = Math.floor(totGL / n), maxGL = Math.ceil(totGL / n);
+
+  // Échange même status (→ D/R préservés).
+  // Même bedType : toujours OK. Cross-bedType : vérifie TW/GL ±1 pour A et B.
+  const bedSwapOk = (A, B, rA, rB) => {
+    if (rA.bedType === rB.bedType) return true;
+    const aTW = A.rooms.filter(r => r.bedType === 'TWIN').length
+              - (rA.bedType === 'TWIN' ? 1 : 0) + (rB.bedType === 'TWIN' ? 1 : 0);
+    const aGL = A.rooms.filter(r => r.bedType === 'GRAND_LIT').length
+              - (rA.bedType === 'GRAND_LIT' ? 1 : 0) + (rB.bedType === 'GRAND_LIT' ? 1 : 0);
+    const bTW = B.rooms.filter(r => r.bedType === 'TWIN').length
+              - (rB.bedType === 'TWIN' ? 1 : 0) + (rA.bedType === 'TWIN' ? 1 : 0);
+    const bGL = B.rooms.filter(r => r.bedType === 'GRAND_LIT').length
+              - (rB.bedType === 'GRAND_LIT' ? 1 : 0) + (rA.bedType === 'GRAND_LIT' ? 1 : 0);
+    return aTW >= minTW && aTW <= maxTW && aGL >= minGL && aGL <= maxGL
+        && bTW >= minTW && bTW <= maxTW && bGL >= minGL && bGL <= maxGL;
+  };
+
   let improved = true, iter = 0;
   while (improved && iter < 500) {
     improved = false; iter++;
@@ -353,9 +375,9 @@ function optimizeFloors(activeFDC) {
         const before = distinctFloors(A) + distinctFloors(B);
         for (const rA of A.rooms) {
           for (const rB of B.rooms) {
-            // Seulement même status ET même bedType → compteurs inchangés
-            if (rA.status !== rB.status || rA.bedType !== rB.bedType) continue;
+            if (rA.status !== rB.status) continue;    // D/R préservés
             if (rA.id === rB.id) continue;
+            if (!bedSwapOk(A, B, rA, rB)) continue;   // TW/GL ±1 préservés
             const afA = new Set([...A.rooms.filter(r => r.id !== rA.id).map(r => r.floor), rB.floor]).size;
             const afB = new Set([...B.rooms.filter(r => r.id !== rB.id).map(r => r.floor), rA.floor]).size;
             if (afA + afB < before) {
