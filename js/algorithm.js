@@ -209,9 +209,26 @@ function distributeRooms(rooms, employees, options) {
     balanceByMove(activeFDC, 'RECOUCHE', options);
   }
 
+  // ── Étape 5b : Équilibrage du total de chambres par FDC ────
+  // Cas non couvert par les deux passes séparées :
+  // Si la même FDC est courte en D ET en R → D=±1, R=±1 mais total=±2.
+  // Preuve : si total_over > total_under+1, nécessairement overD>underD OU overR>underR
+  // → il existe toujours un déplacement sûr qui préserve D±1 et R±1.
+  if (activeFDC.length > 1) {
+    balanceTotals(activeFDC);
+  }
+
   // ── Étape 6 : Équilibrage Twin / Grand lit (toujours)
   if (activeFDC.length > 1) {
     balanceBedTypes(activeFDC);
+  }
+
+  // ── Étape 6b : Ré-équilibrage D/R + Total après bedType (sécurité)
+  // balanceBedTypes utilise la passe cross-status en repli → peut perturber D/R.
+  if (activeFDC.length > 1) {
+    balanceByMove(activeFDC, 'DEPART',   options);
+    balanceByMove(activeFDC, 'RECOUCHE', options);
+    balanceTotals(activeFDC);
   }
 
   // ── Étape 7 : Minimisation des étages par échanges sûrs
@@ -282,16 +299,32 @@ function findBeneficialSwap(fdc1, fdc2, targetTwins, targetGLs, imbalanceBefore)
            Math.abs(tw2 - targetTwins) + Math.abs(gl2 - targetGLs);
   };
 
-  for (const bed1 of ['TWIN', 'GRAND_LIT', 'NONE']) {
-    for (const bed2 of ['TWIN', 'GRAND_LIT', 'NONE']) {
+  const bedTypes = ['TWIN', 'GRAND_LIT', 'NONE'];
+
+  // Passe 1 : même status → préserve les compteurs D/R
+  for (const bed1 of bedTypes) {
+    for (const bed2 of bedTypes) {
       if (bed1 === bed2) continue;
       for (const r1 of fdc1.rooms.filter(r => r.bedType === bed1)) {
-        for (const r2 of fdc2.rooms.filter(r => r.bedType === bed2)) {
+        for (const r2 of fdc2.rooms.filter(r => r.bedType === bed2 && r.status === r1.status)) {
           if (simulateSwap(r1, r2) < imbalanceBefore - 0.01) return { r1, r2 };
         }
       }
     }
   }
+
+  // Passe 2 : cross-status (repli si passe 1 insuffisante)
+  for (const bed1 of bedTypes) {
+    for (const bed2 of bedTypes) {
+      if (bed1 === bed2) continue;
+      for (const r1 of fdc1.rooms.filter(r => r.bedType === bed1)) {
+        for (const r2 of fdc2.rooms.filter(r => r.bedType === bed2 && r.status !== r1.status)) {
+          if (simulateSwap(r1, r2) < imbalanceBefore - 0.01) return { r1, r2 };
+        }
+      }
+    }
+  }
+
   return null;
 }
 
@@ -339,6 +372,46 @@ function optimizeFloors(activeFDC) {
   }
 }
 
+// ── Équilibrage du total de chambres par FDC ─────────────────
+/**
+ * Garantit un écart max de 1 sur le total (D+R) par FDC.
+ * Ne déplace un D ou R que si la source en a PLUS que la cible,
+ * ce qui préserve mathématiquement le ±1 sur D et R.
+ */
+function balanceTotals(activeFDC) {
+  let improved = true, iter = 0;
+  while (improved && iter < 200) {
+    improved = false; iter++;
+    outer: for (let i = 0; i < activeFDC.length; i++) {
+      for (let j = 0; j < activeFDC.length; j++) {
+        if (i === j) continue;
+        const over  = activeFDC[i];
+        const under = activeFDC[j];
+        if (over.rooms.length - under.rooms.length <= 1) continue;
+
+        const overD  = over.rooms.filter(r => r.status === 'DEPART').length;
+        const underD = under.rooms.filter(r => r.status === 'DEPART').length;
+        const overR  = over.rooms.filter(r => r.status === 'RECOUCHE').length;
+        const underR = under.rooms.filter(r => r.status === 'RECOUCHE').length;
+
+        // Choisir le type dont over > under (déplacement safe pour ±1)
+        let statusToMove = null;
+        if      (overD > underD) statusToMove = 'DEPART';
+        else if (overR > underR) statusToMove = 'RECOUCHE';
+        if (!statusToMove) continue;
+
+        const idx = over.rooms.findIndex(r => r.status === statusToMove);
+        if (idx === -1) continue;
+
+        const room = over.rooms.splice(idx, 1)[0];
+        under.rooms.push({ ...room, assignedTo: under.id });
+        improved = true;
+        break outer;
+      }
+    }
+  }
+}
+
 function balanceByMove(activeFDC, statusType, options) {
   const maxLimit = statusType === 'DEPART'
     ? (options?.gouvernanteActive ? options?.maxDeparts   : null)
@@ -376,7 +449,9 @@ function balanceByMove(activeFDC, statusType, options) {
         if (maxLimit && targetCount >= maxLimit) continue;
 
         // Déplacer une chambre du type vers la cible
-        const idx = mover.rooms.findIndex(r => r.status === statusType);
+        // Préférer NONE bedType → préserve les compteurs TW/GL
+        let idx = mover.rooms.findIndex(r => r.status === statusType && r.bedType === 'NONE');
+        if (idx === -1) idx = mover.rooms.findIndex(r => r.status === statusType);
         if (idx === -1) continue;
 
         const room = mover.rooms.splice(idx, 1)[0];
