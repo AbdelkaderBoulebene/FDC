@@ -124,10 +124,12 @@ function parsePmsFormat(rows, headerRowIdx) {
     }
 
     // ── Type de lit ───────────────────────────────────────────
-    // Dans le format PMS, le type de lit N'EST PAS pré-coché.
-    // L'utilisateur définit GL/Twin manuellement dans le tableau.
-    // → bedType = NONE pour toutes les chambres à l'import.
-    const bedType = 'NONE';
+    // Règle hôtel : dernier chiffre 7 → GL + 1 lit simple, 9 → GL + 2 lits simples.
+    // Sinon, bedType = NONE (l'utilisateur définit GL/TW manuellement).
+    const lastDigit = roomNum.slice(-1);
+    const bedType = lastDigit === '7' ? 'GL_SIMPLE'
+                  : lastDigit === '9' ? 'GL_DOUBLE'
+                  : 'NONE';
 
     // ── Étage déduit du numéro de chambre ─────────────────────
     const floor = deriveFloor(roomNum);
@@ -226,6 +228,10 @@ function parseManualFormat(rows, headerRowIdx) {
     let bedType = 'NONE';
     if (isGrandLit)  bedType = 'GRAND_LIT';
     else if (isTwin) bedType = 'TWIN';
+    // Règle hôtel prioritaire : dernier chiffre 7/9 → type auto
+    const lastDigit = roomNum.slice(-1);
+    if (lastDigit === '7') bedType = 'GL_SIMPLE';
+    else if (lastDigit === '9') bedType = 'GL_DOUBLE';
 
     const blocked = normalizeBoolean(get(row, 'blocked'));
 

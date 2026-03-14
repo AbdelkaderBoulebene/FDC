@@ -914,6 +914,7 @@ body {
 .badge-gray   { background: var(--badge-blocked-bg);  color: var(--badge-blocked-text);  border-color: var(--badge-blocked-border);  }
 .badge-blue   { background: var(--badge-twin-bg);     color: var(--badge-twin-text);     border-color: var(--badge-twin-border);     }
 .badge-purple { background: var(--badge-gl-bg);       color: var(--badge-gl-text);       border-color: var(--badge-gl-border);       }
+.badge-pink   { background: rgba(255, 120, 180, 0.18); color: #ff78b4;                    border-color: rgba(255, 120, 180, 0.4);      }
 
 /* ── Zone C1 + C2 : Non attribuées / Bloquées ───────────────── */
 #zone-unassigned,

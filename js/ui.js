@@ -56,6 +56,8 @@ function bedTypeBadge(bedType) {
   switch (bedType) {
     case 'TWIN':      return '<span class="badge badge-blue">Twin</span>';
     case 'GRAND_LIT': return '<span class="badge badge-purple">GL</span>';
+    case 'GL_SIMPLE': return '<span class="badge badge-pink">GL+1</span>';
+    case 'GL_DOUBLE': return '<span class="badge badge-pink">GL+2</span>';
     default:          return '';
   }
 }
@@ -115,19 +117,27 @@ function buildRoomRow(room) {
   const numRecouche = isRecouche ? `<span class="room-num-status status-num-recouche">${escapeHtml(room.roomNumber)}</span>` : '';
   const numPropre   = isPropre   ? `<span class="room-num-status status-num-propre">${escapeHtml(room.roomNumber)}</span>`   : '';
 
-  const isGL   = room.bedType === 'GRAND_LIT';
-  const isTwin = room.bedType === 'TWIN';
+  const isGL       = room.bedType === 'GRAND_LIT';
+  const isTwin     = room.bedType === 'TWIN';
+  const isGLSimple = room.bedType === 'GL_SIMPLE';
+  const isGLDouble = room.bedType === 'GL_DOUBLE';
+  const isAutoType = isGLSimple || isGLDouble;
   const canBed = canToggleBedType(room);
 
   const rowClass = room.blocked ? 'row-blocked' : (isPropre ? 'row-propre' : '');
 
-  const glBtn   = canBed
-    ? `<button class="btn-bed ${isGL ? 'active active-gl' : ''}" onclick="toggleBedType('${escapeHtml(room.id)}', 'GRAND_LIT')" title="Grand lit">GL</button>`
-    : `<span class="btn-bed btn-bed-disabled">—</span>`;
+  // Chambres GL+1 / GL+2 : type auto-détecté → badge fixe, non toggleable
+  const glBtn = isAutoType
+    ? `<span class="btn-bed active active-gl" title="${isGLSimple ? 'GL + 1 lit simple' : 'GL + 2 lits simples'}">${isGLSimple ? 'GL+1' : 'GL+2'}</span>`
+    : canBed
+      ? `<button class="btn-bed ${isGL ? 'active active-gl' : ''}" onclick="toggleBedType('${escapeHtml(room.id)}', 'GRAND_LIT')" title="Grand lit">GL</button>`
+      : `<span class="btn-bed btn-bed-disabled">—</span>`;
 
-  const twinBtn = canBed
-    ? `<button class="btn-bed ${isTwin ? 'active active-twin' : ''}" onclick="toggleBedType('${escapeHtml(room.id)}', 'TWIN')" title="Twin">TW</button>`
-    : `<span class="btn-bed btn-bed-disabled">—</span>`;
+  const twinBtn = isAutoType
+    ? `<span class="btn-bed btn-bed-disabled">—</span>`
+    : canBed
+      ? `<button class="btn-bed ${isTwin ? 'active active-twin' : ''}" onclick="toggleBedType('${escapeHtml(room.id)}', 'TWIN')" title="Twin">TW</button>`
+      : `<span class="btn-bed btn-bed-disabled">—</span>`;
 
   const canBlock   = room.status === 'DEPART' || room.blocked;
   const blockedBtn = canBlock
@@ -209,6 +219,8 @@ function renderEmployeeColumns(employees, options) {
     const bedStatsHtml = `
       <span class="stat-item stat-twin"  title="Twin">${stats.twins} TW</span>
       <span class="stat-item stat-gl"    title="Grand lit">${stats.grandLits} GL</span>
+      ${stats.glSimple > 0 ? `<span class="stat-item stat-gl" title="GL + 1 lit simple">${stats.glSimple} GL+1</span>` : ''}
+      ${stats.glDouble > 0 ? `<span class="stat-item stat-gl" title="GL + 2 lits simples">${stats.glDouble} GL+2</span>` : ''}
     `;
 
     const floorsBadge = !isGouvernante && nbFloors > 0
