@@ -10,7 +10,7 @@ Application web locale, sans installation, sans serveur — fonctionne directeme
 ## Fonctionnalités
 
 ### Gestion des chambres
-- Import du tableau de chambres via **fichier Excel** (modèle hôtel)
+- Import du tableau de chambres via le **PDF « Rapport Détail Gouvernante »** (Oracle OPERA)
 - Saisie manuelle du statut de chaque chambre : **Départ**, **Recouche**, **Propre**
 - Configuration du type de lit : **Twin** / **Grand Lit**
 - Chambres **bloquées** (maintenance, hors service)
@@ -58,7 +58,7 @@ FDC/
     ├── ui.js           # Rendu HTML dynamique
     ├── export.js       # Export Excel (JSZip + OOXML) et impression
     ├── storage.js      # Persistance localStorage
-    ├── importer.js     # Lecture du fichier Excel d'import
+    ├── importer.js     # Lecture du PDF « Rapport Détail Gouvernante » (pdf.js) + secours Excel
     └── dragdrop.js     # Glisser-déposer de chambres entre FDC
 ```
 
@@ -67,8 +67,8 @@ FDC/
 ## Utilisation
 
 1. Ouvrir `index.html` dans un navigateur (Chrome / Edge recommandé)
-2. Charger le **modèle Excel** via le bouton `Modèle` (template hôtel)
-3. Importer ou saisir les chambres avec leur statut
+2. Charger le **modèle Excel** via le bouton `Modèle` (template hôtel, export)
+3. Importer le **PDF « Rapport Détail Gouvernante »** via le bouton `Chambres`
 4. Ajouter les femmes de chambre via `+ Ajouter FDC`
 5. Cliquer sur **Répartir** — la distribution est instantanée
 6. Exporter via **Excel** ou **Imprimer**
@@ -98,5 +98,6 @@ La distribution se fait en 8 étapes :
 
 - **HTML / CSS / JavaScript** pur — zéro dépendance runtime
 - [JSZip](https://stuk.github.io/jszip/) — manipulation XLSX côté client
-- [SheetJS (XLSX)](https://sheetjs.com/) — import Excel
+- [SheetJS (XLSX)](https://sheetjs.com/) — export Excel + secours import
+- [pdf.js](https://mozilla.github.io/pdf.js/) — lecture du PDF « Rapport Détail Gouvernante »
 - Persistance : `localStorage` (clé `fdc_app_state_v1`)

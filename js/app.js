@@ -63,7 +63,7 @@ function initApp() {
   // Initialiser le drag & drop
   initDragLeaveListeners();
 
-  // ── Bouton : Import Excel ──────────────────────────────────
+  // ── Bouton : Import PDF (Rapport Détail Gouvernante) ───────
   document.getElementById('btn-import').addEventListener('click', () => {
     document.getElementById('file-input').click();
   });
@@ -73,7 +73,7 @@ function initApp() {
     if (!file) return;
 
     try {
-      const { rooms, format } = await parseExcel(file);
+      const { rooms, format } = await parseRoomsFile(file);
 
       // Réinitialiser les assignations en conservant les employées
       window.AppState.rooms = rooms;
@@ -102,7 +102,7 @@ function initApp() {
     const state = window.AppState;
 
     if (state.rooms.length === 0) {
-      showToast('Importez d\'abord un fichier Excel', 'error');
+      showToast('Importez d\'abord le PDF des chambres', 'error');
       return;
     }
 

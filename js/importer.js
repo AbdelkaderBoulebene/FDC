@@ -1,7 +1,21 @@
 /**
- * importer.js — Import et parsing des fichiers Excel (.xls et .xlsx)
+ * importer.js — Import et parsing du fichier des chambres du jour
  *
- * Supporte deux formats :
+ * FORMAT PRINCIPAL (étape 2) — PDF « Rapport Détail Gouvernante » (Oracle OPERA)
+ *   Voir parsePdf() + parseGouvernanteReport() plus bas.
+ *   Colonnes lues : Num. cham, Type, Statut (propreté), Statut FO, Statut de réservation
+ *   Règle de décision (ordre : Statut FO → Statut de réservation → Statut propreté) :
+ *     OCC + « Due Out »                       → DEPART
+ *     OCC + autre (Stayover, Arrived, …)      → RECOUCHE
+ *     VAC + « Departed » (incl. Departed/Arrival) → DEPART
+ *     VAC + autre  →  propreté : Clean → PROPRE / Dirty → DEPART / Out of Order → BLOQUÉ
+ *   La 2ᵉ ligne « DEP(Linen Change) » est ignorée.
+ *   bedType : dernier chiffre 7→GL_SIMPLE, 9→GL_DOUBLE (auto) ; sinon NONE
+ *             (GL/TW jamais pré-coché — la gouvernante choisit manuellement).
+ *   Note : TRI→Triple, QAD→Quadruple, SAE→Suite.
+ *   Exclues : type PF, chambre 9610, lignes sans numéro.
+ *
+ * FORMATS EXCEL (hérités, conservés en secours via parseRoomsFile) :
  *
  * FORMAT A — Export PMS hôtel (ibis/Accor style)
  *   Détecté si le fichier contient "N° Chambre" ou "Etat" dans les en-têtes
@@ -257,8 +271,199 @@ function parseManualFormat(rows, headerRowIdx) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// FORMAT PDF — Rapport Détail Gouvernante (Oracle OPERA)
+// ══════════════════════════════════════════════════════════════
+
+// Configuration du worker pdf.js (chargé depuis le même CDN que la lib)
+if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const PDF_ROOM_TYPES = new Set(['TWI', 'TRI', 'QAD', 'DBL', 'SAE', 'PF']);
+
+/**
+ * Extrait le texte d'un PDF et le reconstruit en lignes visuelles.
+ * Chaque item de texte est regroupé par coordonnée Y (même ligne),
+ * puis trié par X (ordre des colonnes de gauche à droite).
+ *
+ * @param {File} file
+ * @returns {Promise<Array<{ y: number, text: string, cells: Array<{str:string,x:number}> }>>}
+ */
+async function extractPdfLines(file) {
+  if (!window.pdfjsLib) {
+    throw new Error('pdf.js non chargé. Vérifiez votre connexion internet.');
+  }
+
+  const buffer = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+
+  const lines = [];
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+
+    const items = content.items
+      .filter(it => it.str && it.str.trim() !== '')
+      .map(it => ({ str: it.str.trim(), x: it.transform[4], y: it.transform[5] }))
+      .sort((a, b) => (b.y - a.y) || (a.x - b.x));
+
+    let current = null;
+    for (const it of items) {
+      if (!current || Math.abs(current.y - it.y) > 3) {
+        current = { y: it.y, cells: [] };
+        lines.push(current);
+      }
+      current.cells.push({ str: it.str, x: it.x });
+    }
+  }
+
+  return lines.map(l => ({
+    y: l.y,
+    cells: l.cells,
+    text: l.cells.map(c => c.str).join(' ').replace(/\s+/g, ' ').trim()
+  }));
+}
+
+// ── Décision : Statut FO + Statut de réservation + propreté → statut FDC ──
+function statusFromGouvernante(statutFo, reservation, cleanliness) {
+  const fo    = statutFo.toUpperCase();
+  const res   = reservation.toLowerCase();
+  const clean = cleanliness.toLowerCase();
+
+  if (fo === 'OCC') {
+    if (res.includes('due out')) return { status: 'DEPART', blocked: false };
+    return { status: 'RECOUCHE', blocked: false };
+  }
+
+  // VAC
+  if (res.includes('depart')) return { status: 'DEPART', blocked: false }; // Departed, Departed/Arrival
+
+  // VAC + reste (Not Reserved, Arrival…) → on regarde la propreté
+  if (clean.includes('out of order') || clean.includes('order')) return { status: 'NONE', blocked: true };
+  if (clean.includes('dirty')) return { status: 'DEPART', blocked: false };
+  return { status: 'PROPRE', blocked: false }; // Clean (ou vide) → propre
+}
+
+/**
+ * Transforme les lignes extraites du PDF en tableau de Room[].
+ * @param {Array<{text:string, cells:Array}>} lines
+ * @returns {Array}
+ */
+function parseGouvernanteReport(lines) {
+  const headerFound = lines.some(l => {
+    const t = l.text.toLowerCase();
+    return t.includes('statut fo') || (t.includes('num') && t.includes('statut de r'));
+  });
+  if (!headerFound) {
+    throw new Error(
+      'En-tête du « Rapport Détail Gouvernante » introuvable. ' +
+      'Vérifiez que le PDF est bien ce rapport (colonnes Num. cham / Type / Statut FO…).'
+    );
+  }
+
+  const rooms = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const tokens = lines[i].text.split(' ').filter(Boolean);
+    if (tokens.length < 3) continue;
+
+    const roomNum = tokens[0];
+    if (!/^\d{3,4}$/.test(roomNum)) continue; // ignore en-têtes, pieds de page, dates, lignes « DEP(Linen Change) »
+
+    const type = (tokens[1] || '').toUpperCase();
+    if (!PDF_ROOM_TYPES.has(type)) continue; // ligne inattendue
+    if (type === 'PF' || roomNum === '9610') continue; // fausses chambres
+
+    let rest = tokens.slice(2).join(' ');
+
+    // ── Statut propreté (début du reste) ─────────────────────
+    let cleanliness = '';
+    const mClean = rest.match(/^(Out of Order|Dirty|Clean)\b\s*/i);
+    if (mClean) {
+      cleanliness = mClean[1];
+      rest = rest.slice(mClean[0].length);
+    }
+
+    // ── Statut FO ────────────────────────────────────────────
+    let statutFo = '';
+    const mFo = rest.match(/^(OCC|VAC)\b\s*/i);
+    if (mFo) {
+      statutFo = mFo[1].toUpperCase();
+      rest = rest.slice(mFo[0].length);
+    } else {
+      continue; // pas de statut FO exploitable
+    }
+
+    // ── Statut de réservation (reste), « DEP(Linen Change) » retiré ──
+    const reservation = rest
+      .replace(/DEP\s*\(\s*Linen Change\s*\)/ig, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const { status, blocked } = statusFromGouvernante(statutFo, reservation, cleanliness);
+
+    // ── Type de lit ──────────────────────────────────────────
+    // Règle hôtel : dernier chiffre 7 → GL + 1 lit simple, 9 → GL + 2 lits simples (auto, non modifiable).
+    // Sinon bedType = NONE : la gouvernante coche GL ou TW manuellement (jamais pré-coché à l'import).
+    const lastDigit = roomNum.slice(-1);
+    let bedType = 'NONE';
+    if (lastDigit === '7')      bedType = 'GL_SIMPLE';
+    else if (lastDigit === '9') bedType = 'GL_DOUBLE';
+
+    // ── Note ─────────────────────────────────────────────────
+    let note = '';
+    if (type === 'TRI')      note = 'Triple';
+    else if (type === 'QAD') note = 'Quadruple';
+    else if (type === 'SAE') note = 'Suite';
+
+    rooms.push({
+      id:         `room-${i}-${roomNum}`,
+      roomNumber: roomNum,
+      floor:      deriveFloor(roomNum),
+      status:     blocked ? 'NONE' : status,
+      bedType,
+      blocked,
+      note,
+      assignedTo: null
+    });
+  }
+
+  return rooms;
+}
+
+async function parsePdf(file) {
+  const lines = await extractPdfLines(file);
+  const rooms = parseGouvernanteReport(lines);
+  if (rooms.length === 0) {
+    throw new Error('Aucune chambre valide trouvée dans le PDF.');
+  }
+  rooms.sort((a, b) =>
+    a.floor - b.floor ||
+    a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true })
+  );
+  return { rooms, format: 'PDF — Rapport Détail Gouvernante' };
+}
+
+// ══════════════════════════════════════════════════════════════
 // POINT D'ENTRÉE PRINCIPAL
 // ══════════════════════════════════════════════════════════════
+/**
+ * Parse le fichier des chambres du jour et retourne { rooms, format }.
+ * PDF « Rapport Détail Gouvernante » par défaut ; .xls/.xlsx en secours.
+ *
+ * @param {File} file
+ * @returns {Promise<{ rooms: Array, format: string }>}
+ */
+function parseRoomsFile(file) {
+  const name = (file && file.name ? file.name : '').toLowerCase();
+  if (name.endsWith('.pdf')) {
+    return parsePdf(file);
+  }
+  return parseExcel(file);
+}
+
 /**
  * Parse un fichier .xls ou .xlsx et retourne un tableau de Room[]
  * Détecte automatiquement le format (PMS ou manuel)

@@ -7,3 +7,7 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Outils / divers
+.claude/
+docs/*_files/

@@ -20,7 +20,7 @@
       </div>
     </div>
     <div class="header-actions">
-      <input type="file" id="file-input" accept=".xls,.xlsx" hidden>
+      <input type="file" id="file-input" accept=".pdf" hidden>
       <input type="file" id="template-input" accept=".xlsx" hidden>
 
       <!-- ── Étapes workflow (ordre visuel = ordre d'usage) ── -->
@@ -37,7 +37,7 @@
 
         <!-- ② Importer les chambres -->
         <button id="btn-import" class="btn btn-step"
-          title="Étape 2 — Importer le fichier des chambres du jour (.xlsx)">
+          title="Étape 2 — Importer le PDF des chambres du jour (Rapport Détail Gouvernante)">
           <span class="step-badge" data-step="2"></span>
           <span class="btn-icon">📂</span>
           <span id="import-status">Chambres</span>
@@ -157,7 +157,7 @@
                 <td colspan="8" class="empty-table">
                   <div class="empty-state">
                     <span class="empty-icon">📋</span>
-                    <p>Importez un fichier Excel pour commencer</p>
+                    <p>Importez le PDF des chambres pour commencer</p>
                   </div>
                 </td>
               </tr>
@@ -235,6 +235,7 @@
   <!-- ════════════════════════════════════════════ SCRIPTS ══════ -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/importer.js"></script>
   <script src="js/algorithm.js"></script>
